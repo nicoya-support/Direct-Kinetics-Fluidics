@@ -14,7 +14,6 @@
             --nicoya-light-grey: #F2F2F2;
             --nicoya-border: #E0E0E0;
             --sidebar-width: 280px;
-            /* --topbar-height: 70px;  <-- REMOVED: We now use dynamic height */
         }
 
         /* --- LAYOUT --- */
@@ -23,7 +22,6 @@
             margin: 0; height: 100vh; width: 100vw;
             display: grid;
             grid-template-columns: var(--sidebar-width) 1fr var(--sidebar-width);
-            /* CHANGED: Use min-content so header can grow if it wraps */
             grid-template-rows: min-content 1fr;
             grid-template-areas: "header header header" "left main right";
             overflow: hidden; background-color: #FAFAFA;
@@ -32,7 +30,6 @@
         @media (max-width: 1100px) {
             body {
                 grid-template-columns: var(--sidebar-width) 1fr;
-                /* CHANGED: Use min-content here too */
                 grid-template-rows: min-content 1fr 140px; 
                 grid-template-areas: "header header" "left main" "left right";
             }
@@ -57,14 +54,11 @@
             display: flex; 
             align-items: center; 
             justify-content: space-between;
-            
-            /* ADDED/CHANGED FOR FLEX FIX */
-            flex-wrap: wrap;         /* Allow content to wrap */
-            padding: 10px 2rem;      /* Adjust padding */
-            gap: 15px;               /* Space between Brand and Controls when wrapped */
-            min-height: 70px;        /* Maintain minimum visual height */
-            height: auto;            /* Allow expansion */
-            
+            flex-wrap: wrap;         
+            padding: 10px 2rem;      
+            gap: 15px;               
+            min-height: 70px;        
+            height: auto;            
             z-index: 20; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
@@ -81,14 +75,12 @@
         /* Config Panel Layout */
         .config-panel { 
             display: flex; 
-            gap: 1rem 2rem; /* Reduced gap slightly, allow vertical gap on wrap */
+            gap: 1rem 2rem; 
             align-items: center; 
             height: 100%; 
-            
-            /* ADDED FOR FLEX FIX */
-            flex-wrap: wrap;        /* Allow controls to wrap if screen is very narrow */
+            flex-wrap: wrap;        
             justify-content: flex-end; 
-            flex: 1;                /* Take up remaining space */
+            flex: 1;                
         }
         
         .config-group { 
@@ -131,13 +123,31 @@
         .data-table td { padding: 10px 8px; border-bottom: 1px solid #eee; color: #333; font-weight: 600; vertical-align: middle; }
         .source-tag { display: inline-block; padding: 4px 8px; border-radius: 4px; color: white; font-weight: 700; font-size: 0.75rem; min-width: 24px; text-align: center; margin-right: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
-        /* --- SCALABLE CANVAS --- */
+        /* --- UPDATED ZOOM/PAN STYLES --- */
         main { 
-            grid-area: main; background-color: #F0F2F5; position: relative; 
-            overflow: hidden; display: flex; justify-content: center; align-items: center; 
+            grid-area: main; 
+            background-color: #F0F2F5; 
+            position: relative; 
+            overflow: hidden; /* Clips the zoomed content */
+            display: block;   /* Changed from flex to block for manual positioning */
+            cursor: grab;     /* Visual cue for panning */
+            touch-action: none; /* Prevents browser scroll on mobile */
         }
 
-        #scaler { transform-origin: center center; width: 1280px; height: 800px; display: flex; justify-content: center; align-items: center; }
+        main:active { cursor: grabbing; }
+
+        #scaler { 
+            transform-origin: 0 0; /* Coordinate system starts at top-left for easier math */
+            width: 1280px; 
+            height: 800px; 
+            position: absolute; /* Allows translate to work freely */
+            top: 0; left: 0;
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            will-change: transform;
+        }
+
         .chip-card { background: white; width: 100%; height: 100%; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); padding: 20px 40px; position: relative; display: flex; flex-direction: column; }
         
         .chip-grid { 
@@ -328,7 +338,70 @@
     </aside>
 
     <script>
-        // --- 1. CONFIG & COLORS ---
+        // --- 1. ZOOM & PAN LOGIC ---
+        let scale = 1;
+        let pointX = 0;
+        let pointY = 0;
+        let start = { x: 0, y: 0 };
+        let isPanning = false;
+
+        const mainContainer = document.getElementById('mainContainer');
+        const zoomTarget = document.getElementById('scaler');
+
+        function setTransform() {
+            zoomTarget.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        }
+
+        // PANNING EVENTS
+        mainContainer.onpointerdown = function(e) {
+            if (e.button !== 0) return; // Only left click
+            isPanning = true;
+            // Calculate startup offset relative to current translate
+            start = { x: e.clientX - pointX, y: e.clientY - pointY };
+            mainContainer.setPointerCapture(e.pointerId);
+        };
+
+        mainContainer.onpointermove = function(e) {
+            if (!isPanning) return;
+            e.preventDefault();
+            pointX = e.clientX - start.x;
+            pointY = e.clientY - start.y;
+            setTransform();
+        };
+
+        mainContainer.onpointerup = function(e) {
+            isPanning = false;
+        };
+
+        // ZOOMING EVENTS (Zoom to Mouse Point)
+        mainContainer.onwheel = function(e) {
+            e.preventDefault();
+            
+            const rect = mainContainer.getBoundingClientRect();
+            // Calculate mouse position relative to container
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Calculate offset of mouse relative to the *zoomed* content, 
+            // but normalized to the unzoomed coordinate space
+            const xs = (mouseX - pointX) / scale;
+            const ys = (mouseY - pointY) / scale;
+
+            // Adjust scale
+            const delta = -e.deltaY;
+            (delta > 0) ? (scale *= 1.1) : (scale /= 1.1);
+            
+            // Limit Zoom
+            scale = Math.min(Math.max(0.1, scale), 5);
+
+            // Re-calculate pointX/Y so that the point under mouse remains stationary
+            pointX = mouseX - (xs * scale);
+            pointY = mouseY - (ys * scale);
+
+            setTransform();
+        };
+
+        // --- 2. CONFIG & COLORS ---
         let appMode = 'CMD'; // 'CMD' or 'STV'
 
         const colorsCMD = {
@@ -379,7 +452,7 @@
             return "#" + "00000".substring(0, 6 - c.length) + c;
         }
 
-        // --- 2. STATE ---
+        // --- 3. STATE ---
         let activeColumns = [1,2,3,4,5,6,7,8]; // Default 16ch
         let currentMode = 16;
         
@@ -393,7 +466,7 @@
         // Shared
         let showBlanks = false; 
         
-        // --- 3. DOM ELEMENTS ---
+        // --- 4. DOM ELEMENTS ---
         const gridEl = document.getElementById('chipGrid');
         const svgEl = document.getElementById('pathOverlay');
         const chipCardEl = document.getElementById('chipCard');
@@ -404,7 +477,7 @@
         const detailsTitleEl = document.getElementById('detailsTitle');
         const detailsSubtitleEl = document.getElementById('detailsSubtitle');
 
-        // --- 4. WORKFLOW GENERATION ---
+        // --- 5. WORKFLOW GENERATION ---
         function getWorkflowCMD() {
             const wf = [
                 { id: 'Startup', steps: [ { label: 'Buffer' } ] },
@@ -417,7 +490,6 @@
                      { label: 'EDC/NHS' }, { label: 'Buffer' }, { label: 'Avidin' },
                      { label: 'Buffer' }, { label: 'Ethanolamine' }, { label: 'Buffer', forceBF: true }
                 ]});
-                // Note: forceBF:true ensures this uses BF wells even if Aux is ON
                 wf.push({ id: 'Immobilize Biotin Ligand', steps: [ { label: 'Bt-Ligand' }, { label: 'Buffer', forceBF: true } ] });
             } else {
                 wf.push({ id: 'Build Surface', steps: [
@@ -428,30 +500,24 @@
 
             wf.push({ id: 'Conditioning', steps: [ { label: 'Regeneration' }, { label: 'Buffer', forceBF: true } ] });
             
-            // Kinetics Loop - clustered into rounds
+            // Kinetics Loop
             ['C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach((row, idx) => {
                 const roundSteps = [];
-                
                 if(showBlanks) {
-                    // Blank Cycle: Buffer Blank -> Regen -> Buffer (Wash)
                     roundSteps.push(
                         { label: 'Buffer Blank', isBlank: true, roundRow: row, type: 'analyte' },
                         { label: 'Regeneration', isBlank: true },
                         { label: 'Buffer', forceBF: true, isBlank: true }
                     );
                 }
-
-                // Analyte Cycle
                 roundSteps.push(
                     { label: 'Analyte', roundRow: row, type: 'analyte' },
                     { label: 'Dissociation' },
                     { label: 'Regeneration' }
                 );
-
                 wf.push({ id: `Direct Kinetics, Round ${idx+1} (Row ${row})`, steps: roundSteps });
             });
 
-            // Final Blank Cycle if enabled
             if(showBlanks) {
                 wf.push({ id: 'Final Blank Cycle', steps: [
                     { label: 'Buffer Blank', isBlank: true, roundRow: 'I', type: 'analyte' },
@@ -459,7 +525,6 @@
                     { label: 'Buffer', forceBF: true, isBlank: true }
                 ]});
             }
-
             return wf;
         }
 
@@ -474,33 +539,27 @@
             ];
 
             const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
-            const startIdx = (numLigands > 1) ? 1 : 0; // Skip A if it was used for Ligand
+            const startIdx = (numLigands > 1) ? 1 : 0; 
             const activeRows = rows.slice(startIdx);
 
             activeRows.forEach((row, idx) => {
                 const roundSteps = [];
-                
                 if(showBlanks) {
-                    // Blank Cycle
                     roundSteps.push(
                         { label: 'Buffer Blank', isBlank: true, roundRow: row, type: 'analyte' },
                         { label: 'Regeneration', isBlank: true },
                         { label: 'Buffer', forceBF: true, isBlank: true }
                     );
                 }
-
-                // Analyte Cycle
                 roundSteps.push(
                     { label: 'Analyte', roundRow: row, type: 'analyte' },
                     { label: 'Dissociation' },
                     { label: 'Regeneration' },
                     { label: 'Buffer' }
                 );
-
                 wf.push({ id: `Direct Kinetics, Round ${idx + 1} (Row ${row})`, steps: roundSteps });
             });
 
-            // Final Blank Cycle if enabled
             if(showBlanks) {
                 wf.push({ id: 'Final Blank Cycle', steps: [
                     { label: 'Buffer Blank', isBlank: true, roundRow: 'I', type: 'analyte' },
@@ -508,17 +567,15 @@
                     { label: 'Buffer', forceBF: true, isBlank: true }
                 ]});
             }
-
             return wf;
         }
 
-        // --- 5. LOGIC: Source Mapping ---
+        // --- 6. LOGIC: Source Mapping ---
         function getSourcesForColumn(actId, step, colIndex) {
             if (appMode === 'CMD') return getSourcesCMD(actId, step, colIndex);
             return getSourcesSTV(actId, step, colIndex);
         }
 
-        // Helper to identify a kinetics round block
         function isKineticsBlock(actId) {
             return actId.includes('Round') || actId.includes('Final Blank');
         }
@@ -526,18 +583,11 @@
         function getSourcesCMD(actId, step, colIndex) {
             const stepName = step.label;
             
-            // Priority 1: Forced Buffer or explicit Blank flags for Wash/Buffer steps
             if (step.forceBF) return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
-            
-            // Priority 2: Generic Buffer/Dissociation steps
-            if (stepName === 'Dissociation') {
-                 return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
-            }
+            if (stepName === 'Dissociation') return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
 
             if (stepName.includes('Buffer') && !step.type) {
-                // If it's a kinetics block, buffer steps usually come from BF
                 if (isKineticsBlock(actId)) return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
-                // Otherwise use Aux logic (R8) if Aux is enabled
                 return [{ id: isAux ? 'well-R8' : `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
             }
 
@@ -545,13 +595,10 @@
                 return [{ id: (colIndex % 2 !== 0) ? 'well-A1' : 'well-A2', off: 0, side: 'Both' }];
             }
 
-            // Analyte & Blank Sample logic (Uses step.type='analyte' instead of name matching)
             if (isKineticsBlock(actId) && step.type === 'analyte') {
                 if(step.isBlank) {
-                    // Buffer Blank: Draw from Buffer
                     return [{ id: `well-BF${colIndex}`, off: 0, type: 'buffer', side: 'Both' }];
                 }
-                // Actual Analyte: Draw from Sample + Buffer
                 return [
                     { id: `well-${step.roundRow}${colIndex}`, off: -5, type: 'analyte', side: 'Both' },
                     { id: `well-BF${colIndex}`, off: 5, type: 'buffer', side: 'Both' }
@@ -580,12 +627,8 @@
         function getSourcesSTV(actId, step, colIndex) {
             const stepName = step.label;
             
-            // Priority 1: Forced Buffer or explicit Blank flags
             if (step.forceBF) return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
-
-            if (stepName === 'Dissociation') {
-                 return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
-            }
+            if (stepName === 'Dissociation') return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
 
             if (stepName.includes('Buffer') && !step.type) {
                 return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
@@ -610,12 +653,10 @@
                 else if ([5,6,13,14].includes(s1)) rWell = 'well-R3';
                 return [{ id: rWell, off: 0, side: 'Both', type: 'regen' }];
             }
-            // Analyte & Blank Sample logic (Uses step.type='analyte')
             if (isKineticsBlock(actId) && step.type === 'analyte') {
                  if(step.isBlank) {
                     return [{ id: `well-BF${colIndex}`, off: 0, type: 'buffer', side: 'Both' }];
                  }
-                 // Actual Analyte
                  return [
                     { id: `well-${step.roundRow}${colIndex}`, off: -5, type: 'analyte', side: 'Both' },
                     { id: `well-BF${colIndex}`, off: 5, type: 'buffer', side: 'Both' }
@@ -624,7 +665,7 @@
             return [];
         }
 
-        // --- 6. RENDER TABLE ---
+        // --- 7. RENDER TABLE ---
         function renderDetailsTable(actId, step) {
             detailsTitleEl.textContent = step.label;
             detailsSubtitleEl.textContent = actId;
@@ -677,7 +718,7 @@
             return tag;
         }
 
-        // --- 7. ANIMATION ENGINE ---
+        // --- 8. ANIMATION ENGINE ---
         function getLocalCoords(el) {
             let x = 0; let y = 0; let curr = el;
             while(curr && curr.id !== 'chipCard') {
@@ -747,7 +788,6 @@
                 const sources = getSourcesForColumn(actId, step, col);
                 sources.forEach(src => {
                     let color = getSourceColor(src.id, src.type);
-                    // Override CMD analyte logic (purple for analyte)
                     if (appMode === 'CMD' && isKineticsBlock(actId) && step.type === 'analyte' && !step.isBlank) {
                         if(src.type === 'analyte') color = colorsCMD['ANALYTE'];
                         if(src.type === 'buffer') color = colorsCMD['BUFFER'];
@@ -806,7 +846,6 @@
             await new Promise(r => setTimeout(r, 100));
 
             // 4. Mixing / Delivery
-            // Check if this is an analyte step that needs dilution (gradient)
             const isDilutionStep = isKineticsBlock(actId) && step.type === 'analyte' && !step.isBlank;
 
             if (isDilutionStep) {
@@ -870,7 +909,6 @@
                     const endL = getLocalCoords(sL);
                     const endR = getLocalCoords(sR);
                     
-                    // Logic Variation for CMD "Split" vs STV "Deliver"
                     if (appMode === 'CMD' && step.label.includes('EDC/NHS')) {
                         const mixColor = colorsCMD['MixEDC'];
                         const dL = createDrop(mixer, mixColor, 0); const dR = createDrop(mixer, mixColor, 0);
@@ -879,7 +917,6 @@
                             animateDirect(dR, center, endR, mixColor, 'x-first').then(() => { sR.style.backgroundColor = mixColor; dR.remove(); })
                         ]);
                     } else {
-                        // General delivery based on side
                         const leftDrop = colDrops.find(d => d.side === 'L');
                         const rightDrop = colDrops.find(d => d.side === 'R');
                         const bothDrop = colDrops.find(d => d.side === 'Both');
@@ -914,17 +951,21 @@
             document.querySelectorAll('.well').forEach(el => { el.style.backgroundColor = ''; el.style.borderColor = ''; el.style.color = ''; });
         }
 
-        function resize() {
+        function fitToScreen() {
             const container = document.getElementById('mainContainer');
             if(!container) return;
-            const cw = container.clientWidth; const ch = container.clientHeight;
-            const scale = Math.min(cw / 1280, ch / 800) * 0.98;
-            scalerEl.style.transform = `scale(${scale})`;
+            const cw = container.clientWidth; 
+            const ch = container.clientHeight;
+            
+            // Calculate scale to fit with 5% margin
+            scale = Math.min(cw / 1280, ch / 800) * 0.95;
+            
+            // Calculate centered position
+            pointX = (cw - (1280 * scale)) / 2;
+            pointY = (ch - (800 * scale)) / 2;
+            
+            setTransform();
         }
-        
-        const resizeObserver = new ResizeObserver(() => requestAnimationFrame(resize));
-        const mainContainer = document.getElementById('mainContainer');
-        if(mainContainer) resizeObserver.observe(mainContainer);
 
         function updateLigandCount(val) {
             numLigands = parseInt(val);
@@ -956,25 +997,16 @@
                     const cell = document.createElement('div'); cell.className = 'cell';
                     const isActive = activeColumns.includes(c);
                     
-                    // VISIBILITY LOGIC
                     if (appMode === 'CMD') {
-                        // CMD: Only Sample rows (C-I) and Buffer row should hide inactive columns.
                         const isSampleRow = ['C','D','E','F','G','H','I'].includes(label) || type === 'well-bf';
-                        
-                        if(isSampleRow && !isActive) {
-                             cell.style.visibility = 'hidden'; 
-                        } else if (!isActive) {
-                             // Reagents: Just dim slightly, don't hide
-                             cell.style.opacity = 1.0;
-                        }
+                        if(isSampleRow && !isActive) cell.style.visibility = 'hidden'; 
+                        else if (!isActive) cell.style.opacity = 1.0;
                     } else {
-                        // STV: Hide all inactive
                         const alwaysVisibleRows = ['R', 'A', 'B'];
                         const isAlwaysVisible = alwaysVisibleRows.includes(param) || type === 'well-r';
                         if (!isActive && !isAlwaysVisible) cell.style.opacity = 0;
                     }
 
-                    // CONTENT LOGIC
                     let displayLabel = c; 
                     let displaySensorL = (c*2)-1;
                     let displaySensorR = c*2;
@@ -1028,7 +1060,7 @@
             });
         }
         
-        // --- 8. INITIALIZATION & LISTENERS ---
+        // --- 9. INITIALIZATION & LISTENERS ---
         const auxToggle = document.getElementById('auxToggle');
         const bioToggle = document.getElementById('bioToggle'); 
         const blankToggle = document.getElementById('blankToggle');
@@ -1036,7 +1068,6 @@
         
         function updateUIState() {
             document.getElementById('chipTypeLabel').textContent = appMode;
-            
             if (appMode === 'CMD') {
                 document.querySelectorAll('.cmd-only').forEach(e => e.classList.remove('hidden'));
                 document.querySelectorAll('.stv-only').forEach(e => e.classList.add('hidden'));
@@ -1044,7 +1075,6 @@
                 document.querySelectorAll('.cmd-only').forEach(e => e.classList.add('hidden'));
                 document.querySelectorAll('.stv-only').forEach(e => e.classList.remove('hidden'));
             }
-            
             clearVisuals();
             renderGrid();
             renderSidebar();
@@ -1052,37 +1082,32 @@
         }
 
         function init() {
-            // Toggles
             appModeToggle.addEventListener('change', (e) => {
                 appMode = e.target.checked ? 'STV' : 'CMD';
                 updateUIState();
             });
-
             auxToggle.addEventListener('change', (e) => { 
                 isAux = e.target.checked; 
                 clearVisuals(); 
-                // Only re-render sidebar in CMD to update Aux buffer dependencies
                 if(appMode==='CMD') renderSidebar();
                 logPanel.innerText = `Aux: ${isAux?'ON':'OFF'}`; 
             }); 
-
             bioToggle.addEventListener('change', (e) => { 
                 isBioAvidin = e.target.checked; 
                 clearVisuals(); 
                 if(appMode==='CMD') renderSidebar(); 
                 logPanel.innerText = `Bio-Avidin: ${isBioAvidin?'ON':'OFF'}`; 
             });
-
             blankToggle.addEventListener('change', (e) => {
                 showBlanks = e.target.checked;
                 renderSidebar();
             });
+            window.addEventListener('resize', fitToScreen);
 
-            // Start defaults
             appMode = 'CMD';
             updateUIState();
             setMode(16); 
-            resize(); 
+            fitToScreen(); 
         }
         init();
     </script>
