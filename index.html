@@ -14,7 +14,7 @@
             --nicoya-light-grey: #F2F2F2;
             --nicoya-border: #E0E0E0;
             --sidebar-width: 280px;
-            --topbar-height: 70px;
+            /* --topbar-height: 70px;  <-- REMOVED: We now use dynamic height */
         }
 
         /* --- LAYOUT --- */
@@ -23,7 +23,8 @@
             margin: 0; height: 100vh; width: 100vw;
             display: grid;
             grid-template-columns: var(--sidebar-width) 1fr var(--sidebar-width);
-            grid-template-rows: var(--topbar-height) 1fr;
+            /* CHANGED: Use min-content so header can grow if it wraps */
+            grid-template-rows: min-content 1fr;
             grid-template-areas: "header header header" "left main right";
             overflow: hidden; background-color: #FAFAFA;
         }
@@ -31,7 +32,8 @@
         @media (max-width: 1100px) {
             body {
                 grid-template-columns: var(--sidebar-width) 1fr;
-                grid-template-rows: var(--topbar-height) 1fr 140px; 
+                /* CHANGED: Use min-content here too */
+                grid-template-rows: min-content 1fr 140px; 
                 grid-template-areas: "header header" "left main" "left right";
             }
             .sidebar-right {
@@ -52,14 +54,42 @@
             grid-area: header;
             background-color: var(--nicoya-white);
             border-bottom: 1px solid var(--nicoya-border);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 2rem; z-index: 20; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            
+            /* ADDED/CHANGED FOR FLEX FIX */
+            flex-wrap: wrap;         /* Allow content to wrap */
+            padding: 10px 2rem;      /* Adjust padding */
+            gap: 15px;               /* Space between Brand and Controls when wrapped */
+            min-height: 70px;        /* Maintain minimum visual height */
+            height: auto;            /* Allow expansion */
+            
+            z-index: 20; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
-        .brand { font-weight: 800; font-size: 1.3rem; color: var(--nicoya-dark-blue); display:flex; align-items:center; gap:10px; min-width: 220px;}
+        .brand { 
+            font-weight: 800; 
+            font-size: 1.3rem; 
+            color: var(--nicoya-dark-blue); 
+            display:flex; 
+            align-items:center; 
+            gap:10px; 
+            min-width: 220px;
+        }
         
         /* Config Panel Layout */
-        .config-panel { display: flex; gap: 2rem; align-items: center; height: 100%; }
+        .config-panel { 
+            display: flex; 
+            gap: 1rem 2rem; /* Reduced gap slightly, allow vertical gap on wrap */
+            align-items: center; 
+            height: 100%; 
+            
+            /* ADDED FOR FLEX FIX */
+            flex-wrap: wrap;        /* Allow controls to wrap if screen is very narrow */
+            justify-content: flex-end; 
+            flex: 1;                /* Take up remaining space */
+        }
         
         .config-group { 
             display: flex; align-items: center; gap: 0.8rem; 
