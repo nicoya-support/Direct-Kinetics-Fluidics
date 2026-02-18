@@ -14,7 +14,7 @@
             --nicoya-light-grey: #F2F2F2;
             --nicoya-border: #E0E0E0;
             --sidebar-width: 280px;
-            --topbar-height: 70px; /* Increased slightly for alignment */
+            --topbar-height: 70px;
         }
 
         /* --- LAYOUT --- */
@@ -58,7 +58,7 @@
 
         .brand { font-weight: 800; font-size: 1.3rem; color: var(--nicoya-dark-blue); display:flex; align-items:center; gap:10px; min-width: 220px;}
         
-        /* New Config Panel Layout */
+        /* Config Panel Layout */
         .config-panel { display: flex; gap: 2rem; align-items: center; height: 100%; }
         
         .config-group { 
@@ -67,7 +67,6 @@
             position: relative;
         }
         
-        /* Vertical Separator between groups */
         .config-group:not(:last-child)::after {
             content: ""; position: absolute; right: -1rem; top: 20%; height: 60%;
             border-right: 1px solid #eee;
@@ -150,24 +149,17 @@
             padding: 0 10px; font-size: 11px; font-weight: 800; 
         }
         
-        /* White Knob */
         .app-slider:before { 
             position: absolute; content: ""; height: 24px; width: 42px; left: 3px; bottom: 3px; 
             background-color: white; border-radius: 4px; transition: .4s; z-index: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
         input:checked + .app-slider:before { transform: translateX(42px); }
-        
-        /* Text Labels */
         .app-label-l, .app-label-r { z-index: 2; transition: 0.3s; }
-
-        /* Default (Unchecked / CMD is active) */
-        .app-label-l { color: var(--nicoya-light-blue); } /* Active Label Color */
-        .app-label-r { color: rgba(255,255,255,0.4); }   /* Inactive Label Color */
-        
-        /* Checked (STV is active) */
+        .app-label-l { color: var(--nicoya-light-blue); } 
+        .app-label-r { color: rgba(255,255,255,0.4); }   
         input:checked + .app-slider .app-label-l { color: rgba(255,255,255,0.4); }
-        input:checked + .app-slider .app-label-r { color: var(--nicoya-light-blue); } /* Active Label Color */
+        input:checked + .app-slider .app-label-r { color: var(--nicoya-light-blue); }
 
         .row-label { font-size: 14px; font-weight: 700; color: #aaa; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px;}
         .cell { position: relative; display: flex; justify-content: center; align-items: center; }
@@ -245,7 +237,7 @@
             </div>
 
             <div class="config-group stv-only hidden">
-                <span class="config-label">Ligands</span>
+                <span class="config-label">Unique Ligands</span>
                 <input type="range" id="ligandRange" min="1" max="8" value="1" oninput="updateLigandCount(this.value)">
                 <span id="ligandCountVal" style="font-weight:700; font-size:0.9rem; color:#333; min-width:15px; text-align:center;">1</span>
             </div>
@@ -259,7 +251,7 @@
             </div>
 
             <div class="config-group cmd-only">
-                <span class="config-label">Aux Buffer</span>
+                <span class="config-label">Auxiliary Buffer</span>
                 <label class="switch">
                     <input type="checkbox" id="auxToggle">
                     <span class="slider"></span>
@@ -395,7 +387,8 @@
                      { label: 'EDC/NHS' }, { label: 'Buffer' }, { label: 'Avidin' },
                      { label: 'Buffer' }, { label: 'Ethanolamine' }, { label: 'Buffer', forceBF: true }
                 ]});
-                wf.push({ id: 'Immobilize Biotin Ligand', steps: [ { label: 'Bt-Ligand' }, { label: 'Buffer' } ] });
+                // Note: forceBF:true ensures this uses BF wells even if Aux is ON
+                wf.push({ id: 'Immobilize Biotin Ligand', steps: [ { label: 'Bt-Ligand' }, { label: 'Buffer', forceBF: true } ] });
             } else {
                 wf.push({ id: 'Build Surface', steps: [
                     { label: 'EDC/NHS' }, { label: 'Buffer' }, { label: 'Ligand' },
@@ -405,16 +398,38 @@
 
             wf.push({ id: 'Conditioning', steps: [ { label: 'Regeneration' }, { label: 'Buffer', forceBF: true } ] });
             
-            const kinSteps = [];
+            // Kinetics Loop - clustered into rounds
             ['C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach((row, idx) => {
-                kinSteps.push(
-                    { label: `Buffer Blank`, isBlank: true, roundRow: row }, 
-                    { label: `Analyte Round ${idx+1}`, roundRow: row, type: 'analyte' },
-                    { label: `Buffer Round ${idx+1}` },
-                    { label: `Regeneration Round ${idx+1}` }
+                const roundSteps = [];
+                
+                if(showBlanks) {
+                    // Blank Cycle: Buffer Blank -> Regen -> Buffer (Wash)
+                    roundSteps.push(
+                        { label: 'Buffer Blank', isBlank: true, roundRow: row, type: 'analyte' },
+                        { label: 'Regeneration', isBlank: true },
+                        { label: 'Buffer', forceBF: true, isBlank: true }
+                    );
+                }
+
+                // Analyte Cycle
+                roundSteps.push(
+                    { label: 'Analyte', roundRow: row, type: 'analyte' },
+                    { label: 'Dissociation' },
+                    { label: 'Regeneration' }
                 );
+
+                wf.push({ id: `Direct Kinetics, Round ${idx+1} (Row ${row})`, steps: roundSteps });
             });
-            wf.push({ id: 'Direct Kinetics', steps: kinSteps });
+
+            // Final Blank Cycle if enabled
+            if(showBlanks) {
+                wf.push({ id: 'Final Blank Cycle', steps: [
+                    { label: 'Buffer Blank', isBlank: true, roundRow: 'I', type: 'analyte' },
+                    { label: 'Regeneration', isBlank: true },
+                    { label: 'Buffer', forceBF: true, isBlank: true }
+                ]});
+            }
+
             return wf;
         }
 
@@ -428,21 +443,42 @@
                 { id: 'Conditioning', steps: [ { label: 'Regeneration' }, { label: 'Buffer' } ] }
             ];
 
-            const kinSteps = [];
             const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
             const startIdx = (numLigands > 1) ? 1 : 0; // Skip A if it was used for Ligand
             const activeRows = rows.slice(startIdx);
 
             activeRows.forEach((row, idx) => {
-                kinSteps.push(
-                    { label: `Buffer Blank`, isBlank: true, roundRow: row }, 
-                    { label: `Analyte Round ${idx + 1}`, roundRow: row, type: 'analyte' },
-                    { label: `Buffer Wash` },
-                    { label: `Regeneration` },
-                    { label: `Buffer` }
+                const roundSteps = [];
+                
+                if(showBlanks) {
+                    // Blank Cycle
+                    roundSteps.push(
+                        { label: 'Buffer Blank', isBlank: true, roundRow: row, type: 'analyte' },
+                        { label: 'Regeneration', isBlank: true },
+                        { label: 'Buffer', forceBF: true, isBlank: true }
+                    );
+                }
+
+                // Analyte Cycle
+                roundSteps.push(
+                    { label: 'Analyte', roundRow: row, type: 'analyte' },
+                    { label: 'Dissociation' },
+                    { label: 'Regeneration' },
+                    { label: 'Buffer' }
                 );
+
+                wf.push({ id: `Direct Kinetics, Round ${idx + 1} (Row ${row})`, steps: roundSteps });
             });
-            wf.push({ id: 'Direct Kinetics', steps: kinSteps });
+
+            // Final Blank Cycle if enabled
+            if(showBlanks) {
+                wf.push({ id: 'Final Blank Cycle', steps: [
+                    { label: 'Buffer Blank', isBlank: true, roundRow: 'I', type: 'analyte' },
+                    { label: 'Regeneration', isBlank: true },
+                    { label: 'Buffer', forceBF: true, isBlank: true }
+                ]});
+            }
+
             return wf;
         }
 
@@ -452,28 +488,53 @@
             return getSourcesSTV(actId, step, colIndex);
         }
 
+        // Helper to identify a kinetics round block
+        function isKineticsBlock(actId) {
+            return actId.includes('Round') || actId.includes('Final Blank');
+        }
+
         function getSourcesCMD(actId, step, colIndex) {
             const stepName = step.label;
-            if (step.forceBF || step.isBlank) return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
-            if (stepName.includes('Buffer')) {
-                if (actId === 'Direct Kinetics') return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
+            
+            // Priority 1: Forced Buffer or explicit Blank flags for Wash/Buffer steps
+            if (step.forceBF) return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
+            
+            // Priority 2: Generic Buffer/Dissociation steps
+            if (stepName === 'Dissociation') {
+                 return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
+            }
+
+            if (stepName.includes('Buffer') && !step.type) {
+                // If it's a kinetics block, buffer steps usually come from BF
+                if (isKineticsBlock(actId)) return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
+                // Otherwise use Aux logic (R8) if Aux is enabled
                 return [{ id: isAux ? 'well-R8' : `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
             }
+
             if (stepName.includes('Normalize') || stepName === 'Normalization High') {
                 return [{ id: (colIndex % 2 !== 0) ? 'well-A1' : 'well-A2', off: 0, side: 'Both' }];
             }
-            if (actId === 'Direct Kinetics' && stepName.includes('Analyte')) {
+
+            // Analyte & Blank Sample logic (Uses step.type='analyte' instead of name matching)
+            if (isKineticsBlock(actId) && step.type === 'analyte') {
+                if(step.isBlank) {
+                    // Buffer Blank: Draw from Buffer
+                    return [{ id: `well-BF${colIndex}`, off: 0, type: 'buffer', side: 'Both' }];
+                }
+                // Actual Analyte: Draw from Sample + Buffer
                 return [
                     { id: `well-${step.roundRow}${colIndex}`, off: -5, type: 'analyte', side: 'Both' },
                     { id: `well-BF${colIndex}`, off: 5, type: 'buffer', side: 'Both' }
                 ];
             }
+
             if (stepName.includes('EDC/NHS')) return [ { id: 'well-A5', off: -5, side: 'Both' }, { id: 'well-A6', off: 5, side: 'Both' } ];
             if (stepName.includes('Ligand') || stepName === 'Bt-Ligand') {
                 return [ { id: 'well-R5', off: -5, side: 'L' }, { id: `well-B${colIndex}`, off: 5, side: 'R' } ];
             }
-            const s1 = (colIndex * 2) - 1;
+            
             if (stepName.includes('Regeneration')) {
+                const s1 = (colIndex * 2) - 1;
                 let rWell = 'well-R4';
                 if ([1,2,9,10].includes(s1)) rWell = 'well-R1';
                 else if ([3,4,11,12].includes(s1)) rWell = 'well-R2';
@@ -488,7 +549,15 @@
 
         function getSourcesSTV(actId, step, colIndex) {
             const stepName = step.label;
-            if (step.isBlank || stepName.includes('Buffer')) {
+            
+            // Priority 1: Forced Buffer or explicit Blank flags
+            if (step.forceBF) return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
+
+            if (stepName === 'Dissociation') {
+                 return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
+            }
+
+            if (stepName.includes('Buffer') && !step.type) {
                 return [{ id: `well-BF${colIndex}`, off: 0, side: 'Both', type: 'buffer' }];
             }
             if (stepName.includes('Normalization')) {
@@ -511,8 +580,13 @@
                 else if ([5,6,13,14].includes(s1)) rWell = 'well-R3';
                 return [{ id: rWell, off: 0, side: 'Both', type: 'regen' }];
             }
-            if (stepName.includes('Analyte')) {
-                return [
+            // Analyte & Blank Sample logic (Uses step.type='analyte')
+            if (isKineticsBlock(actId) && step.type === 'analyte') {
+                 if(step.isBlank) {
+                    return [{ id: `well-BF${colIndex}`, off: 0, type: 'buffer', side: 'Both' }];
+                 }
+                 // Actual Analyte
+                 return [
                     { id: `well-${step.roundRow}${colIndex}`, off: -5, type: 'analyte', side: 'Both' },
                     { id: `well-BF${colIndex}`, off: 5, type: 'buffer', side: 'Both' }
                 ];
@@ -526,7 +600,7 @@
             detailsSubtitleEl.textContent = actId;
             tableBodyEl.innerHTML = '';
 
-            const isAnalyteStep = actId === 'Direct Kinetics' && step.label.includes('Analyte') && !step.isBlank;
+            const isAnalyteStep = isKineticsBlock(actId) && step.type === 'analyte' && !step.isBlank;
 
             activeColumns.forEach((col, idx) => {
                 let sources = getSourcesForColumn(actId, step, col);
@@ -539,7 +613,7 @@
                     const tdSrc = document.createElement('td');
                     srcList.forEach(src => {
                         let isAn = isAnalyteStep && src.type === 'analyte'; // CMD logic
-                        if (appMode === 'STV') isAn = false; // STV uses distinct types passed to getSourceColor
+                        if (appMode === 'STV') isAn = false; 
                         tdSrc.appendChild(createSourceTag(src.id, isAn, src.type));
                     });
                     tr.appendChild(tdSrc);
@@ -643,8 +717,8 @@
                 const sources = getSourcesForColumn(actId, step, col);
                 sources.forEach(src => {
                     let color = getSourceColor(src.id, src.type);
-                    // Override CMD analyte logic
-                    if (appMode === 'CMD' && actId === 'Direct Kinetics' && step.label.includes('Analyte')) {
+                    // Override CMD analyte logic (purple for analyte)
+                    if (appMode === 'CMD' && isKineticsBlock(actId) && step.type === 'analyte' && !step.isBlank) {
                         if(src.type === 'analyte') color = colorsCMD['ANALYTE'];
                         if(src.type === 'buffer') color = colorsCMD['BUFFER'];
                     }
@@ -702,7 +776,10 @@
             await new Promise(r => setTimeout(r, 100));
 
             // 4. Mixing / Delivery
-            if (actId === 'Direct Kinetics' && step.type === 'analyte') {
+            // Check if this is an analyte step that needs dilution (gradient)
+            const isDilutionStep = isKineticsBlock(actId) && step.type === 'analyte' && !step.isBlank;
+
+            if (isDilutionStep) {
                 logPanel.innerHTML = `Action: Serial Dilution<br>Generating concentrations...`;
                 drops.forEach(d => { if(d.element) d.element.remove(); });
                 
@@ -852,7 +929,6 @@
                     // VISIBILITY LOGIC
                     if (appMode === 'CMD') {
                         // CMD: Only Sample rows (C-I) and Buffer row should hide inactive columns.
-                        // Reagents (R, A, B) should remain visible to show the physical cartridge layout.
                         const isSampleRow = ['C','D','E','F','G','H','I'].includes(label) || type === 'well-bf';
                         
                         if(isSampleRow && !isActive) {
@@ -892,7 +968,6 @@
                     else if(type === 'well-r') cell.innerHTML = `<div class="well well-r" id="well-R${c}">R${c}</div>`;
                     else if(type === 'well-bf') cell.innerHTML = `<div class="well well-bf" id="well-BF${c}">BF${c}</div>`;
                     else if(type === 'well-s') {
-                        // Sample Well Logic - Modified to remove STV Row A special coloring
                         cell.innerHTML = `<div class="well well-s" id="well-${param}${c}">${param}${c}</div>`;
                     }
                     
@@ -914,7 +989,6 @@
                 const ul = document.createElement('ul'); ul.className = 'drop-list';
                 
                 act.steps.forEach(step => {
-                    if (step.isBlank && !showBlanks) return;
                     const dLi = document.createElement('li'); dLi.className = 'drop-item';
                     dLi.innerHTML = `<div class="drop-indicator"></div> ${step.label}`;
                     dLi.onclick = (e) => { e.stopPropagation(); runStep(act.id, step, dLi); };
@@ -957,7 +1031,9 @@
             auxToggle.addEventListener('change', (e) => { 
                 isAux = e.target.checked; 
                 clearVisuals(); 
-                if(appMode==='CMD') logPanel.innerText = `Aux: ${isAux?'ON':'OFF'}`; 
+                // Only re-render sidebar in CMD to update Aux buffer dependencies
+                if(appMode==='CMD') renderSidebar();
+                logPanel.innerText = `Aux: ${isAux?'ON':'OFF'}`; 
             }); 
 
             bioToggle.addEventListener('change', (e) => { 
@@ -975,11 +1051,10 @@
             // Start defaults
             appMode = 'CMD';
             updateUIState();
-            setMode(16); // Default to 16 Channel
+            setMode(16); 
             resize(); 
         }
         init();
     </script>
 </body>
-
 </html>
