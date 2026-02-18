@@ -236,21 +236,6 @@
         .fluid-path { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; }
         
         #logPanel { position: absolute; bottom: 20px; right: 20px; background: rgba(33, 43, 56, 0.95); color: white; padding: 12px 20px; border-radius: 8px; font-size: 12px; z-index: 200; max-width: 300px; }
-        #zoomControls {
-            position: absolute; bottom: 20px; right: 20px; 
-            background: white; border-radius: 8px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            display: flex; gap: 2px; padding: 4px;
-            z-index: 200;
-        }
-        .zoom-btn {
-            background: none; border: none; 
-            width: 32px; height: 32px; 
-            cursor: pointer; border-radius: 4px;
-            font-size: 16px; font-weight: bold; color: #555;
-            display: flex; justify-content: center; align-items: center;
-        }
-        .zoom-btn:hover { background-color: #f0f0f0; color: var(--nicoya-dark-blue); }
         #chipTypeLabel { font-size: 0.7rem; color: #999; margin-left: 5px; background:#eee; padding:2px 4px; border-radius:4px; display:none;}
     </style>
 </head>
@@ -325,11 +310,6 @@
             </div>
         </div>
         <div id="logPanel">System Ready</div>
-                <div id="zoomControls">
-            <button class="zoom-btn" onclick="adjustZoom(-0.1)" title="Zoom Out">-</button>
-            <button class="zoom-btn" onclick="resetZoom()" title="Reset View">R</button>
-            <button class="zoom-btn" onclick="adjustZoom(0.1)" title="Zoom In">+</button>
-        </div>
     </main>
 
     <aside class="sidebar-right">
@@ -935,10 +915,11 @@
         }
 
         function resize() {
-            // Recalculate base scale for "fit" if user hasn't zoomed
-            if (!isUserZoomed) {
-                resetZoom();
-            }
+            const container = document.getElementById('mainContainer');
+            if(!container) return;
+            const cw = container.clientWidth; const ch = container.clientHeight;
+            const scale = Math.min(cw / 1280, ch / 800) * 0.98;
+            scalerEl.style.transform = `scale(${scale})`;
         }
         
         const resizeObserver = new ResizeObserver(() => requestAnimationFrame(resize));
@@ -1047,70 +1028,6 @@
             });
         }
         
-        // --- ZOOM & PAN IMPLEMENTATION ---
-        const panContainer = document.getElementById('panContainer');
-        let scale = 1;
-        let pX = 0; let pY = 0;
-        let isPanning = false;
-        let startX = 0; let startY = 0;
-        let isUserZoomed = false;
-
-        function updateTransform() {
-            panContainer.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`;
-        }
-
-        function resetZoom() {
-            const container = document.getElementById('mainContainer');
-            if(!container) return;
-            const cw = container.clientWidth; const ch = container.clientHeight;
-            // Calculate fit scale
-            scale = Math.min(cw / 1280, ch / 800) * 0.95;
-            pX = 0; pY = 0;
-            isUserZoomed = false;
-            updateTransform();
-        }
-
-        function adjustZoom(delta) {
-            isUserZoomed = true;
-            scale += delta;
-            if(scale < 0.1) scale = 0.1;
-            if(scale > 5) scale = 5;
-            updateTransform();
-        }
-
-        // Mouse Wheel Zoom
-        mainContainer.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            isUserZoomed = true;
-            const zoomSensitivity = 0.001;
-            const delta = -e.deltaY * zoomSensitivity * scale;
-            scale += delta;
-            if(scale < 0.1) scale = 0.1;
-            if(scale > 5) scale = 5;
-            updateTransform();
-        });
-
-        // Click & Drag Pan
-        mainContainer.addEventListener('mousedown', (e) => {
-            if(e.target.closest('button')) return; // Ignore button clicks
-            isPanning = true;
-            startX = e.clientX - pX;
-            startY = e.clientY - pY;
-            mainContainer.style.cursor = 'grabbing';
-        });
-
-        window.addEventListener('mouseup', () => {
-            isPanning = false;
-            mainContainer.style.cursor = 'grab';
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isPanning) return;
-            e.preventDefault();
-            pX = e.clientX - startX;
-            pY = e.clientY - startY;
-            updateTransform();
-        });
         // --- 8. INITIALIZATION & LISTENERS ---
         const auxToggle = document.getElementById('auxToggle');
         const bioToggle = document.getElementById('bioToggle'); 
@@ -1165,11 +1082,9 @@
             appMode = 'CMD';
             updateUIState();
             setMode(16); 
-            resetZoom();
+            resize(); 
         }
         init();
     </script>
 </body>
 </html>
-
-
