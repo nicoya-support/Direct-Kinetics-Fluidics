@@ -110,7 +110,7 @@
         .activity-item.open .activity-btn { background-color: #f0f7ff; color: var(--nicoya-light-blue); }
         .drop-list { list-style: none; padding: 0; margin: 0; background-color: #FAFAFA; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
         .activity-item.open .drop-list { max-height: 5000px; border-bottom: 1px solid var(--nicoya-border); }
-        .drop-item { padding: 0.7rem 1.2rem 0.7rem 2.2rem; font-size: 0.8rem; color: #555; cursor: pointer; display: flex; align-items: center; gap: 0.7rem; transition: all 0.2s; }
+        .drop-item { padding: 0.6rem 1.2rem 0.6rem 2.2rem; font-size: 0.8rem; color: #555; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: all 0.2s; }
         .drop-item:hover { background-color: #eee; }
         .drop-item.running { font-weight: 700; color: var(--nicoya-dark-blue); background-color: #e3f2fd; }
         .drop-indicator { width: 8px; height: 8px; border-radius: 50%; background-color: #ddd; margin-right: 8px; }
@@ -159,7 +159,7 @@
 
         #pathOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; }
 
-        .mode-btn { border: 1px solid #ddd; background: white; padding: 0.7rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 700; color:#555; transition:0.2s; }
+        .mode-btn { border: 1px solid #ddd; background: white; padding: 0.6rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 700; color:#555; transition:0.2s; }
         .mode-btn:hover { background:#f5f5f5; }
         .mode-btn.active { background: var(--nicoya-dark-blue); color: white; border-color: var(--nicoya-dark-blue); }
         
@@ -197,8 +197,8 @@
         input:checked + .app-slider:before { transform: translateX(42px); }
         .app-label-l, .app-label-r { z-index: 2; transition: 0.3s; }
         .app-label-l { color: var(--nicoya-light-blue); } 
-        .app-label-r { color: rgba(255,255,255,0.7); }   
-        input:checked + .app-slider .app-label-l { color: rgba(255,255,255,0.7); }
+        .app-label-r { color: rgba(255,255,255,0.6); }   
+        input:checked + .app-slider .app-label-l { color: rgba(255,255,255,0.6); }
         input:checked + .app-slider .app-label-r { color: var(--nicoya-light-blue); }
 
         .row-label { font-size: 14px; font-weight: 700; color: #aaa; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px;}
@@ -211,21 +211,21 @@
             border-radius: 8px; 
             z-index: 5; 
             position: relative;
-            background-image: radial-gradient(rgba(255,255,255,0.7) 20%, transparent 20%); 
+            background-image: radial-gradient(rgba(255,255,255,0.6) 20%, transparent 20%); 
             background-size: 10px 10px; 
         }
 
         .well { border-radius: 50%; border: 3px solid var(--nicoya-dark-blue); background: white; display: flex; justify-content: center; align-items: center; font-weight: 800; color: var(--nicoya-dark-blue); z-index: 12; transition: all 0.3s; position: relative; }
-        .well-s { width: 28px; height: 28px; font-size: 14px; }
-        .well-r { width: 44px; height: 44px; font-size: 14px; background-color: var(--nicoya-white); }
-        .well-bf { width: 48px; height: 48px; font-size: 15px; border-width: 4px; }
+        .well-s { width: 35px; height: 35px; font-size: 18px; }
+        .well-r { width: 50px; height: 50px; font-size: 18px; background-color: var(--nicoya-white); }
+        .well-bf { width: 65px; height: 65px; font-size: 18px; border-width: 4px; }
         
         .sensor-group { display: flex; gap: 6px; width: 80px; }
         .sensor { 
             flex: 1; height: 32px; 
             background: #000000; color: #FFFFFF;
             display: flex; justify-content: center; align-items: center; 
-            font-size: 12px; font-weight: 800; border-radius: 3px; 
+            font-size: 18px; font-weight: 800; border-radius: 3px; 
             z-index: 12; 
             transition: background-color 0.3s; 
             position: relative; 
@@ -235,7 +235,7 @@
             background: var(--nicoya-light-blue); 
             width: 90px; height: 24px; 
             display: flex; justify-content: center; align-items: center; 
-            border-radius: 4px; font-size: 12px; font-weight: 700; 
+            border-radius: 4px; font-size: 18px; font-weight: 700; 
             z-index: 12; position: relative; 
             color: #fff;
         }
@@ -243,7 +243,7 @@
         .gap-point { width: 0px; height: 0px; background: #bbb; border-radius: 50%; z-index: 12; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2); position: relative; }
 
         .liquid-drop { position: absolute; width: 14px; height: 14px; border-radius: 50%; z-index: 100; box-shadow: 0 3px 6px rgba(0,0,0,0.3); pointer-events: none; will-change: top, left; }
-        .fluid-path { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.7; }
+        .fluid-path { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; }
         
         #logPanel { position: absolute; bottom: 20px; right: 20px; background: rgba(33, 43, 56, 0.95); color: white; padding: 12px 20px; border-radius: 8px; font-size: 12px; z-index: 200; max-width: 300px; }
         #chipTypeLabel { font-size: 0.7rem; color: #999; margin-left: 5px; background:#eee; padding:2px 4px; border-radius:4px; display:none;}
@@ -919,7 +919,7 @@
                     const mixer = document.getElementById(`mix-${col}`);
                     
                     colDrops.forEach(d => {
-                        d.element.style.transition = 'transform 0.7s, opacity 0.7s';
+                        d.element.style.transition = 'transform 0.6s, opacity 0.6s';
                         d.element.style.transform = 'scale(0.1)'; d.element.style.opacity = '0';
                     });
                     await new Promise(r => setTimeout(r, 450));
