@@ -614,13 +614,13 @@
                 const logicalLane = activeColumns.indexOf(colIndex) + 1;
                 let rWell = 'well-R4';
                 if (currentMode === 4) {
-                    if (logicalLane === 1) rWell = 'well-R1';
-                    else if (logicalLane === 2) rWell = 'well-R2';
+                    if (logicalLane === 2) rWell = 'well-R1';
+                    else if (logicalLane === 1) rWell = 'well-R4';
                 } else if (currentMode === 8) {
-                    if (logicalLane === 1) rWell = 'well-R1';
-                    else if (logicalLane === 2) rWell = 'well-R2';
-                    else if (logicalLane === 3) rWell = 'well-R3';
-                    else if (logicalLane === 4) rWell = 'well-R4';
+                    if (logicalLane === 1) rWell = 'well-R3';
+                    else if (logicalLane === 2) rWell = 'well-R4';
+                    else if (logicalLane === 3) rWell = 'well-R1';
+                    else if (logicalLane === 4) rWell = 'well-R2';
                 } else {
                     const s1 = (colIndex * 2) - 1;
                     if ([1,2,9,10].includes(s1)) rWell = 'well-R1';
@@ -660,13 +660,13 @@
                 const logicalLane = activeColumns.indexOf(colIndex) + 1;
                 let rWell = 'well-R4';
                 if (currentMode === 4) {
-                    if (logicalLane === 1) rWell = 'well-R1';
-                    else if (logicalLane === 2) rWell = 'well-R2';
+                    if (logicalLane === 2) rWell = 'well-R1';
+                    else if (logicalLane === 1) rWell = 'well-R4';
                 } else if (currentMode === 8) {
-                    if (logicalLane === 1) rWell = 'well-R1';
-                    else if (logicalLane === 2) rWell = 'well-R2';
-                    else if (logicalLane === 3) rWell = 'well-R3';
-                    else if (logicalLane === 4) rWell = 'well-R4';
+                    if (logicalLane === 1) rWell = 'well-R3';
+                    else if (logicalLane === 2) rWell = 'well-R4';
+                    else if (logicalLane === 3) rWell = 'well-R1';
+                    else if (logicalLane === 4) rWell = 'well-R2';
                 } else {
                     const s1 = (colIndex * 2) - 1;
                     if ([1,2,9,10].includes(s1)) rWell = 'well-R1';
