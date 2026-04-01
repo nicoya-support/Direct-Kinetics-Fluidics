@@ -1006,6 +1006,21 @@
             if(mode === 4) activeColumns = [4, 5];
             else if(mode === 8) activeColumns = [3, 4, 5, 6];
             else activeColumns = [1, 2, 3, 4, 5, 6, 7, 8];
+            
+            // --- UPDATED LIGAND SLIDER MAX LOGIC ---
+            const ligandSlider = document.getElementById('ligandRange');
+            let maxLigands = 8; // default for 16 channels
+            if (mode === 4) maxLigands = 2;
+            else if (mode === 8) maxLigands = 4;
+            
+            ligandSlider.max = maxLigands;
+            
+            // Cap the current value if it exceeds the new max
+            if (parseInt(ligandSlider.value) > maxLigands) {
+                ligandSlider.value = maxLigands;
+                updateLigandCount(maxLigands);
+            }
+
             renderGrid();
         }
 
@@ -1135,5 +1150,3 @@
     </script>
 </body>
 </html>
-
-
